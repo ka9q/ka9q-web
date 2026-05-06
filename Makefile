@@ -42,6 +42,8 @@ ka9q-web: ka9q-web.o libka9q.a
 	$(CC) -o $@ $^ -lonion -lbsd -lm
 
 install: ka9q-web ka9q-web.service
+	install -d -m 0775 $(DESTDIR)$(confdir)
+	install -m 0775 ka9q-web-status.conf $(DESTDIR)$(confdir)/
 	install -d -m 0755 $(DESTDIR)$(sbindir)
 	install -m 0755 ka9q-web $(DESTDIR)$(sbindir)/
 	install -d -m 0755 $(DESTDIR)$(pkgdatadir)/html/
@@ -82,6 +84,7 @@ config_paths.h: Makefile
 %.service: %.service.in
 	sed -e 's|@bindir@|$(bindir)|g' \
 	-e 's|@sbindir@|$(sbindir)|g' \
+	-e 's|@statedir@|$(statedir)|g' \
 	$< > $@
 
 %.o: %.c config_paths.h

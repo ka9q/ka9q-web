@@ -1,4 +1,4 @@
-ka9q-web-status.conf etc/radio/
+etc/radio/*
 usr/sbin/*
 usr/share/ka9q-web/html/*
 usr/lib/systemd/system/*.service
