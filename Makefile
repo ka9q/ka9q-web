@@ -21,28 +21,23 @@ UNAME_S := $(shell uname -s)
 export prefix exec_prefix bindir sbindir libdir datadir sysconfdir
 export localstatedir pkgdatadir pkglibdir statedir mandir
 
-
-KA9Q_RADIO_DIR=ka9q-sources
-PREFIX=/usr/local
-
 # for production
 DOPTS=-DNDEBUG=1 -O3
 
 # for debugging
 #DOPTS=-g
 
+KA9QOBJS = misc.o multicast.o rtp.o status.o decode_status.o
+
 COPTS=-march=native -std=gnu11 -pthread -Wall -funsafe-math-optimizations -D_GNU_SOURCE=1
-
 INCLUDES=-Ika9q-sources
-
-RESOURCES_BASE_DIR=$(pkgdatadir)
 
 CFLAGS=$(DOPTS) $(COPTS)
 CPPFLAGS=$(INCLUDES)
 
 all: ka9q-web
 
-ka9q-web: ka9q-web.o ka9q-sources/libka9q.a
+ka9q-web: ka9q-web.o libka9q.a
 	$(CC) -o $@ $^ -lonion -lbsd -lm
 
 install: ka9q-web
@@ -58,6 +53,10 @@ clean:
 	-rm -f ka9q-web *.o *.d
 
 .PHONY: clean all install
+
+libka9q.a: $(KA9QOBJS)
+	ar rv $@ $^
+	ranlib $@
 
 # handle quotes inside GIT summary messages, etc. Suggested by ChatGPT
 esc = sed 's/\\/\\\\/g; s/"/\\"/g'
