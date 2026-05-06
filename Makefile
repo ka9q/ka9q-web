@@ -14,12 +14,13 @@ localstatedir ?= /var
 pkgdatadir    ?= $(datadir)/ka9q-web
 pkglibdir     ?= $(libdir)/ka9q-web
 statedir      ?= $(localstatedir)/lib/ka9q-radio
+systemdunitdir ?= /etc/systemd/system
 
 
 UNAME_S := $(shell uname -s)
 
 export prefix exec_prefix bindir sbindir libdir datadir sysconfdir
-export localstatedir pkgdatadir pkglibdir statedir mandir
+export localstatedir pkgdatadir pkglibdir statedir mandir systemdunitdir
 
 # for production
 DOPTS=-DNDEBUG=1 -O3
@@ -35,16 +36,17 @@ INCLUDES=-Ika9q-sources
 CFLAGS=$(DOPTS) $(COPTS)
 CPPFLAGS=$(INCLUDES)
 
-all: ka9q-web
+all: ka9q-web ka9q-web.service
 
 ka9q-web: ka9q-web.o libka9q.a
 	$(CC) -o $@ $^ -lonion -lbsd -lm
 
-install: ka9q-web
+install: ka9q-web ka9q-web.service
 	install -d -m 0755 $(DESTDIR)$(sbindir)
-	install -m 755 $^ $(DESTDIR)$(sbindir)
+	install -m 0755 ka9q-web $(DESTDIR)$(sbindir)
 	install -d -m 0755 $(DESTDIR)$(pkgdatadir)/html/
-	install -m 644 -D html/* -t $(DESTDIR)$(pkgdatadir)/html/
+	install -m 0644 -D html/* -t $(DESTDIR)$(pkgdatadir)/html/
+	install -m 0644 ka9q-web.service $(DESTDIR)$(systemdunitdir)
 
 install-config:
 	install -b -m 644 config/* $(DESTDIR)$(confdir)
@@ -75,6 +77,13 @@ config_paths.h: Makefile
 	@printf '#define GIT_VERSION "%s"\n' "$$(git describe --always --dirty --tags | $(esc))" >> $@
 	@printf '#define GIT_REMOTE_URL "%s"\n' "$$(git remote get-url origin  | $(esc))" >> $@
 	@printf '#endif\n' >> $@
+
+%.service: %.service.in
+        sed -e 's|@bindir@|$(bindir)|g' \
+            -e 's|@sbindir@|$(sbindir)|g' \
+            -e 's|@recordings@|$(recordingsdir)|g' \
+            $< > $@
+
 
 %.o: %.c config_paths.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
