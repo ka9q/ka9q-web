@@ -45,6 +45,7 @@
 #include "status.h"
 #include "radio.h"
 #include "config.h"
+#include "config_paths.h"
 
 const char *webserver_version = "2.82";
 
@@ -1033,7 +1034,7 @@ int main(int argc,char **argv) {
 #define xstr(s) str(s)
 #define str(s) #s
   char const *port="8081";
-  char const *dirname=xstr(RESOURCES_BASE_DIR) "/html";
+  char const *dirname=xstr(PKGDATADIR) "/html";
   char const *mcast="hf.local";
   App_path=argv[0];
   /* Open syslog and record the current git commit index. Prefer the build-time
