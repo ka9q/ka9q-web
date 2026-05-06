@@ -50,7 +50,7 @@ install-config:
 	install -b -m 644 config/* $(DESTDIR)$(confdir)
 
 clean:
-	-rm -f ka9q-web *.o *.d
+	-rm -f ka9q-web *.o *.d config_paths.h
 
 .PHONY: clean all install
 
