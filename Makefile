@@ -79,10 +79,10 @@ config_paths.h: Makefile
 	@printf '#endif\n' >> $@
 
 %.service: %.service.in
-        sed -e 's|@bindir@|$(bindir)|g' \
-            -e 's|@sbindir@|$(sbindir)|g' \
-            -e 's|@recordings@|$(recordingsdir)|g' \
-            $< > $@
+	sed -e 's|@bindir@|$(bindir)|g' \
+	-e 's|@sbindir@|$(sbindir)|g' \
+	-e 's|@recordings@|$(recordingsdir)|g' \
+	$< > $@
 
 
 %.o: %.c config_paths.h
