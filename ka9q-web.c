@@ -1034,7 +1034,7 @@ int main(int argc,char **argv) {
 #define xstr(s) str(s)
 #define str(s) #s
   char const *port="8081";
-  char const *dirname=xstr(PKGDATADIR) "/html";
+  char const *dirname = PKGDATADIR "/html";
   char const *mcast="hf.local";
   App_path=argv[0];
   /* Open syslog and record the current git commit index. Prefer the build-time
