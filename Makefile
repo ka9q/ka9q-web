@@ -11,8 +11,8 @@ libdir        ?= $(exec_prefix)/lib
 datadir       ?= $(prefix)/share
 confdir	      ?= /etc/radio
 localstatedir ?= /var
-pkgdatadir    ?= $(datadir)/ka9q-radio
-pkglibdir     ?= $(libdir)/ka9q-radio
+pkgdatadir    ?= $(datadir)/ka9q-web
+pkglibdir     ?= $(libdir)/ka9q-web
 statedir      ?= $(localstatedir)/lib/ka9q-radio
 
 
