@@ -43,10 +43,11 @@ ka9q-web: ka9q-web.o libka9q.a
 
 install: ka9q-web ka9q-web.service
 	install -d -m 0755 $(DESTDIR)$(sbindir)
-	install -m 0755 ka9q-web $(DESTDIR)$(sbindir)
+	install -m 0755 ka9q-web $(DESTDIR)$(sbindir)/
 	install -d -m 0755 $(DESTDIR)$(pkgdatadir)/html/
 	install -m 0644 -D html/* -t $(DESTDIR)$(pkgdatadir)/html/
-	install -m 0644 ka9q-web.service $(DESTDIR)$(systemdunitdir)
+	install -d -m 0755 $(DESTDIR)$(systemdunitdir)
+	install -m 0644 ka9q-web.service $(DESTDIR)$(systemdunitdir)/
 
 install-config:
 	install -b -m 644 config/* $(DESTDIR)$(confdir)
