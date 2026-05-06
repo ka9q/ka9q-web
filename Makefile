@@ -53,7 +53,7 @@ install-config:
 	install -b -m 644 config/* $(DESTDIR)$(confdir)
 
 clean:
-	-rm -f ka9q-web *.o *.d config_paths.h
+	-rm -f ka9q-web *.o *.d config_paths.h ka9q-web.service
 
 .PHONY: clean all install
 
@@ -82,9 +82,7 @@ config_paths.h: Makefile
 %.service: %.service.in
 	sed -e 's|@bindir@|$(bindir)|g' \
 	-e 's|@sbindir@|$(sbindir)|g' \
-	-e 's|@recordings@|$(recordingsdir)|g' \
 	$< > $@
-
 
 %.o: %.c config_paths.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
