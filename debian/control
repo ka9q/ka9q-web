@@ -1,0 +1,22 @@
+Source: ka9q-web
+Section: hamradio
+Priority: optional
+Maintainer: Phil Karn <karn@ka9q.net>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+Standards-Version: 4.7.2
+Homepage: http://www.ka9q.net
+#Vcs-Browser: https://salsa.debian.org/debian/ka9q-web
+Vcs-Git: git@github.com:ka9q/ka9q-web.git
+
+Package: ka9q-web
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ libonion0
+Description: Web front end for ka9q-radio
+ Web server that provides a GUI front end for the ka9q-radio spectrum server.
+ 
+
