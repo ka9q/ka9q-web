@@ -1,4 +1,8 @@
 ka9q-web
+libka9q.a
+config_paths.h
+*.service
+*.debhelper
 *.o
 private
 .vscode/
