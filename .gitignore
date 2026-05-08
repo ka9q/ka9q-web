@@ -6,6 +6,7 @@ config_paths.h
 *.o
 private
 .vscode/
+.claude/settings.local.json
 \#*\#
 ._*
 .apdisk

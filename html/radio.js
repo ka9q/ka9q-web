@@ -397,6 +397,28 @@
         sampleRate: 12000,
         flushingTime: 250
         });
+
+      // Opus decoder state
+      let opusDecoder = null;
+      let opusDecoderReady = false;
+
+      async function initOpusDecoder() {
+        try {
+          opusDecoder = new window["opus-decoder"].OpusDecoder();
+          await opusDecoder.ready;
+          opusDecoderReady = true;
+        } catch(e) {
+          console.error('Failed to initialize Opus decoder:', e);
+        }
+      }
+
+      function destroyOpusDecoder() {
+        if (opusDecoder) {
+          try { opusDecoder.free(); } catch(e) {}
+          opusDecoder = null;
+          opusDecoderReady = false;
+        }
+      }
 // (diagnostics removed)
       // Ensure player volume matches slider after creation. Defer if DOM not ready.
       const volumeSliderInit = document.getElementById('volume_control');
@@ -1571,6 +1593,36 @@ function applyQuickBW() {
               } catch (e) {}
               player.feed(audio_data);
               break;
+            case 0x6F: // 111 - Opus audio (48000 Hz, mono)
+              if (opusDecoderReady && opusDecoder) {
+                try {
+                  var opusPayload = new Uint8Array(evt.data, i, data_length);
+                  var result = opusDecoder.decodeFrame(opusPayload);
+                  if (result && result.samplesDecoded > 0) {
+                    // Switch player to Float32 at 48 kHz on first Opus packet
+                    if (!player || !player.audioCtx ||
+                        player.option.encoding !== '32bitFloat' ||
+                        player.option.sampleRate !== result.sampleRate) {
+                      try { if (player) player.destroy(); } catch(e) {}
+                      player = new PCMPlayer({
+                        encoding: '32bitFloat',
+                        channels: 1,
+                        sampleRate: result.sampleRate,
+                        flushingTime: 250
+                      });
+                      try {
+                        const vs = document.getElementById('volume_control');
+                        if (vs) setPlayerVolume(vs.value);
+                      } catch(e) {}
+                    }
+                    // Clone to ensure the Float32Array owns its buffer
+                    player.feed(new Float32Array(result.channelData[0]));
+                  }
+                } catch(e) {
+                  console.warn('Opus decode error:', e);
+                }
+              }
+              break;
             default:
               try {
                 console.warn("received unknown type:", type, `(0x${type.toString(16)})`, "data_len=", data_length);
@@ -2697,12 +2749,36 @@ function applyQuickBW() {
         //console.log("Zoom control is inactive");
     }
 
+    function onOpusCheckboxChange(checked) {
+        try { if (window.localStorage) localStorage.setItem('useOpus', checked ? 'true' : 'false'); } catch (e) {}
+        if (checked) {
+          initOpusDecoder();
+        } else {
+          destroyOpusDecoder();
+          // If audio is running, switch back to PCM immediately
+          const btn = document.getElementById("audio_button");
+          if (btn && btn.value === "STOP") {
+            sendControl('audio', "O:PCM:" + ssrc.toString(), 50);
+          }
+        }
+    }
+
     async function audio_start_stop()
     {
         var btn = document.getElementById("audio_button");
         if(btn.value==="START") {
           btn.value = "STOP";
           btn.innerHTML = "Stop Audio";
+          const useOpus = document.getElementById('opus_checkbox') &&
+                          document.getElementById('opus_checkbox').checked;
+          if (useOpus) {
+            await initOpusDecoder();
+            sendControl('audio', "O:OPUS:" + ssrc.toString(), 50);
+          } else {
+            destroyOpusDecoder();
+            // Ensure backend is using PCM when user starts audio with Opus unchecked
+            sendControl('audio', "O:PCM:" + ssrc.toString(), 50);
+          }
           sendControl('audio', "A:START:"+ssrc.toString(), 50);
           // If player or its AudioContext is gone, recreate it using current mode
           try {
@@ -2710,17 +2786,28 @@ function applyQuickBW() {
             let currentMode = modeEl ? modeEl.value : 'am';
             let newSampleRate = (currentMode === 'fm') ? 24000 : 12000;
             let newChannels = (currentMode === 'iq') ? 2 : 1;
-            if (!player || !player.audioCtx) {
-              try { player.destroy(); } catch (e) {}
-              player = new PCMPlayer({
-                encoding: '16bitInt',
-                channels: newChannels,
-                sampleRate: newSampleRate,
-                flushingTime: 250
-              });
+            if (!useOpus) {
+              // If the existing player is still configured for Opus (32bitFloat)
+              // or has different channels/sampleRate, recreate it for 16-bit PCM.
+              const needRecreate = (!player || !player.audioCtx) ||
+                                   (player && player.option && player.option.encoding !== '16bitInt') ||
+                                   (player && player.option && Number(player.option.channels) !== Number(newChannels)) ||
+                                   (player && player.option && Number(player.option.sampleRate) !== Number(newSampleRate));
+              if (needRecreate) {
+                try { if (player && typeof player.destroy === 'function') player.destroy(); } catch (e) {}
+                player = new PCMPlayer({
+                  encoding: '16bitInt',
+                  channels: newChannels,
+                  sampleRate: newSampleRate,
+                  flushingTime: 250
+                });
+              } else {
+                try { player.resume(); } catch (e) {
+                  try { player.destroy(); } catch (ee) {}
+                  player = new PCMPlayer({ encoding: '16bitInt', channels: newChannels, sampleRate: newSampleRate, flushingTime: 250 });
+                }
+              }
             }
-            // Resume and ensure volume is applied
-            try { player.resume(); } catch (e) { player = new PCMPlayer({ encoding: '16bitInt', channels: newChannels, sampleRate: newSampleRate, flushingTime: 250 }); }
             // diagnostics disabled
           } catch (e) {}
           const volumeSlider = document.getElementById('volume_control');
@@ -2729,6 +2816,9 @@ function applyQuickBW() {
           btn.value = "START";
           btn.innerHTML = "Start Audio";
           sendControl('audio', "A:STOP:"+ssrc.toString(), 50);
+          // Always revert to PCM encoding when audio is stopped
+          sendControl('audio', "O:PCM:" + ssrc.toString(), 50);
+          destroyOpusDecoder();
         }
     }
 
@@ -3272,6 +3362,7 @@ function saveSettings() {
   var volumeControlNumber = document.getElementById("volume_control").valueAsNumber;
   //console.log("Saving volume control: ", volumeControl);
   localStorage.setItem("volume_control", volumeControlNumber);
+  try { localStorage.setItem("useOpus", (document.getElementById("opus_checkbox") && document.getElementById("opus_checkbox").checked) ? "true" : "false"); } catch (e) {}
 }
 
 function checkMaxMinChanged(){  // Save the check boxes for show max and min
@@ -3491,6 +3582,16 @@ function loadSettings() {
   window.keepFreqCentered = kfcVal;
   try { const kfcel = document.getElementById('ckKeepFreqCentered'); if (kfcel) kfcel.checked = kfcVal; } catch (e) {}
   try { const kfcel = document.getElementById('ckKeepFreqCentered'); if (kfcel) kfcel.addEventListener('change', function() { window.keepFreqCentered = this.checked; saveSettings(); }); } catch (e) {}
+  // Restore Opus checkbox state and initialize decoder if enabled
+  const useOpus = getLS("useOpus", v => (v === "true"), false);
+  try { const opel = document.getElementById('opus_checkbox'); if (opel) opel.checked = useOpus; } catch (e) {}
+  try {
+    if (useOpus) {
+      try { initOpusDecoder(); } catch (e) {}
+    } else {
+      try { destroyOpusDecoder(); } catch (e) {}
+    }
+  } catch (e) {}
   if (typeof spectrum !== 'undefined' && spectrum) {
     spectrum.showBandEdges = enableBandEdges;
     spectrum.updateAxes();
